@@ -4,7 +4,10 @@ import daemon
 import imp
 import os
 import requests
+import logging
+import logging.config
 import sys
+import tempfile
 import time
 import urlparse
 
@@ -22,6 +25,14 @@ def run():
    r.raise_for_status()
 
    config = r.json()
+
+   if 'logger' in config:
+      r = requests.get(couch_url.geturl()+'/'+sys.argv[2]+'/'+config['logger'])
+      logging_conf = tempfile.NamedTemporaryFile(delete=False)
+      logging_conf.write(r.text)
+      logging_conf.close()
+      logging.config.fileConfig(logging_conf.name)
+      os.unlink(logging_conf.name)
    
    def get_component(name):
       components = name.split('.')
