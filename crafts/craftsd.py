@@ -14,20 +14,16 @@ import urlparse
 def usage():
    print('Usage: craftsd <CouchDB-url> <crafts-config>')
 
-def run():
-   if len(sys.argv) != 3:
-      usage()
-      return
-
-   couch_url = urlparse.urlparse(sys.argv[1])
-   r = requests.get(couch_url.geturl()+'/'+sys.argv[2])
+def run(raw_url, config_doc):
+   couch_url = urlparse.urlparse(raw_url)
+   r = requests.get(couch_url.geturl()+'/'+config_doc)
 
    r.raise_for_status()
 
    config = r.json()
 
    if 'logger' in config:
-      r = requests.get(couch_url.geturl()+'/'+sys.argv[2]+'/'+config['logger'])
+      r = requests.get(couch_url.geturl()+'/'+config_doc+'/'+config['logger'])
       logging_conf = tempfile.NamedTemporaryFile(delete=False)
       logging_conf.write(r.text)
       logging_conf.close()
@@ -50,4 +46,7 @@ def run():
       pass
 
 if __name__ == '__main__':
-   run()
+   if len(sys.argv) != 3:
+      usage()
+   else:
+      run(sys.argv[1], sys.argv[2])
