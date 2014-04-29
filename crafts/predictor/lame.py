@@ -1,6 +1,7 @@
 from datetime import timedelta
 import crafts.predictor
 
+
 class LamePredictor(crafts.predictor.Predictor):
     def predict(self, window, start_time, interval, cycle_size):
         predictions = []

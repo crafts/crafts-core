@@ -30,9 +30,9 @@ if __name__ == '__main__':
     if args['init']:
         db = couch.create(args['-D'])
         design = {
-                '_id': '_design/crafts',
-                'language': 'coffeescript',
-                'views': {}}
+            '_id': '_design/crafts',
+            'language': 'coffeescript',
+            'views': {}}
 
         for script_file in glob(os.path.join(_here, 'views', '*.coffee')):
             base = os.path.basename(script_file)
@@ -48,6 +48,7 @@ if __name__ == '__main__':
             (doc_id, rev_id) = db.save(config)
             for attachment_file in args['<attachments>']:
                 with open(attachment_file) as attachment:
-                    db.put_attachment({'_id':doc_id, '_rev':rev_id}, attachment)
+                    db.put_attachment({'_id': doc_id, '_rev': rev_id},
+                                      attachment)
     elif args['clear']:
         del couch[args['-D']]

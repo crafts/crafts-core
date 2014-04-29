@@ -2,6 +2,7 @@ from collections import defaultdict
 import crafts.scaler
 import uuid
 
+
 class NullScaler(crafts.scaler.ScalerDriver):
     def __init__(self, cluster=defaultdict(list)):
         self.cluster = cluster

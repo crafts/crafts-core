@@ -2,6 +2,7 @@ from bisect import bisect_left
 from couchdb import Server
 from datetime import datetime
 
+
 class Metric(dict):
     def __init__(self, timestamp, role, host, metrics={}):
         self.timestamp = timestamp
@@ -9,6 +10,7 @@ class Metric(dict):
         self.host = host
         self.metrics = metrics
         super(Metric, self).__init__(metrics)
+
 
 class CraftsCollection(dict):
     def __init__(self, db):
@@ -28,28 +30,40 @@ class CraftsCollection(dict):
 
     def get(self, view, **kwargs):
         result = self._db.view(view, **kwargs)
-        self.update(dict([(datetime.strptime(doc.id, '%Y-%m-%d %H:%M:%S.%f'), doc.value) for doc in result]))
+        self.update(dict([(datetime.strptime(doc.id, '%Y-%m-%d %H:%M:%S.%f'),
+                    doc.value) for doc in result]))
+
 
 class PredictionCollection(CraftsCollection):
     def get(self, role, metric, start=datetime.min, end=datetime.max):
-        return super(PredictionCollection, self).get('crafts/predict',
-                startkey=[role, metric, str(start)],
-                endkey=[role, metric, str(end)])
+        return super(PredictionCollection, self)\
+            .get('crafts/predict',
+                 startkey=[role, metric, str(start)],
+                 endkey=[role, metric, str(end)])
+
 
 class SummaryCollection(CraftsCollection):
     def get(self, role, start=datetime.min, end=datetime.max):
-        return super(SummaryCollection, self).get('crafts/summary',
-                startkey=[role, str(start)], endkey=[role, str(end)])
+        return super(SummaryCollection, self)\
+            .get('crafts/summary',
+                 startkey=[role, str(start)],
+                 endkey=[role, str(end)])
+
 
 class RoleCollection(CraftsCollection):
     def get(self, role, start=datetime.min, end=datetime.max):
-        return super(RoleCollection, self).get('crafts/roles',
-                startkey=[role, str(start)], endkey=[role, str(end)])
+        return super(RoleCollection, self)\
+            .get('crafts/roles',
+                 startkey=[role, str(start)],
+                 endkey=[role, str(end)])
+
 
 class MetricCollection(CraftsCollection):
     def get(self, start=datetime.min, end=datetime.max):
-        return super(MetricCollection, self).get('crafts/metrics',
-                startkey=str(start), endkey=str(end))
+        return super(MetricCollection, self)\
+            .get('crafts/metrics',
+                 startkey=str(start),
+                 endkey=str(end))
 
     def save(self):
         self._db.update(self.values())
@@ -57,9 +71,9 @@ class MetricCollection(CraftsCollection):
     def add(self, m):
         if m.timestamp not in self:
             self[m.timestamp] = {
-                    '_id': str(m.timestamp),
-                    'type': 'sample',
-                    'roles': {}}
+                '_id': str(m.timestamp),
+                'type': 'sample',
+                'roles': {}}
 
         doc = self[m.timestamp]['roles']
 
@@ -71,12 +85,12 @@ class MetricCollection(CraftsCollection):
         for name, metric in m.metrics.items():
             if name not in doc[m.role]['stats']:
                 doc[m.role]['stats'][name] = {
-                        'count': 0,
-                        'sum': 0,
-                        'min': metric,
-                        'max': 0,
-                        'avg': 0,
-                        'var': 0}
+                    'count': 0,
+                    'sum': 0,
+                    'min': metric,
+                    'max': 0,
+                    'avg': 0,
+                    'var': 0}
 
             stats = doc[m.role]['stats'][name]
             stats['count'] += 1
@@ -86,10 +100,11 @@ class MetricCollection(CraftsCollection):
 
             newavg = stats['sum'] / stats['count']
             if stats['count'] > 1:
-                stats['var'] = ((stats['count'] - 2) / (stats['count'] - 1)) * stats['var'] +\
-                        (1 / stats['count']) * (newavg - stats['avg']) ** 2
+                stats['var'] = ((stats['count'] - 2) / (stats['count'] - 1)) *\
+                    stats['var'] +\
+                    (1 / stats['count']) *\
+                    (newavg - stats['avg']) ** 2
             else:
                 stats['var'] = 0
 
             stats['avg'] = newavg
-
