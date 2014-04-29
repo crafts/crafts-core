@@ -1,8 +1,9 @@
+from collections import defaultdict
 import crafts.scaler
 import uuid
 
 class NullScaler(crafts.scaler.ScalerDriver):
-    def __init__(self, cluster):
+    def __init__(self, cluster=defaultdict(list)):
         self.cluster = cluster
 
     def scale_up(self, role, count):
