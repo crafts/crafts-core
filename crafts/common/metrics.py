@@ -1,4 +1,6 @@
-from couchdb import Server 
+from bisect import bisect_left
+from couchdb import Server
+from datetime import datetime
 
 class Metric(dict):
     def __init__(self, timestamp, role, host, metrics={}):
@@ -8,34 +10,67 @@ class Metric(dict):
         self.metrics = metrics
         super(Metric, self).__init__(metrics)
 
-class MetricCollection(dict):
+class CraftsCollection(dict):
     def __init__(self, db):
         self._db = db
 
-        super(MetricCollection, self).__init__()
+        super(CraftsCollection, self).__init__()
+
+    def __iter__(self):
+        keylist = self.keys().sort()
+        for key in keylist:
+            yield self[key]
+
+    def find_nearest(self, dt):
+        pos = bisect_left(sorted(self.keys()), dt)
+
+        return self[self.keys()[pos]]
+
+    def get(self, view, **kwargs):
+        result = self._db.view(view, **kwargs)
+        self.update(dict([(datetime.strptime(doc.id, '%Y-%m-%d %H:%M:%S.%f'), doc.value) for doc in result]))
+
+class PredictionCollection(CraftsCollection):
+    def get(self, role, metric, start=datetime.min, end=datetime.max):
+        return super(PredictionCollection, self).get('crafts/predict',
+                startkey=[role, metric, str(start)],
+                endkey=[role, metric, str(end)])
+
+class SummaryCollection(CraftsCollection):
+    def get(self, role, start=datetime.min, end=datetime.max):
+        return super(SummaryCollection, self).get('crafts/summary',
+                startkey=[role, str(start)], endkey=[role, str(end)])
+
+class RoleCollection(CraftsCollection):
+    def get(self, role, start=datetime.min, end=datetime.max):
+        return super(RoleCollection, self).get('crafts/roles',
+                startkey=[role, str(start)], endkey=[role, str(end)])
+
+class MetricCollection(CraftsCollection):
+    def get(self, start=datetime.min, end=datetime.max):
+        return super(MetricCollection, self).get('crafts/metrics',
+                startkey=str(start), endkey=str(end))
 
     def save(self):
-        docs = []
-        for timestamp, sample in self.items():
-            docs.append({
-                '_id': str(timestamp),
-                'type': 'sample',
-                'roles': sample})
-        
-        self._db.update(docs)
+        self._db.update(self.values())
 
     def add(self, m):
         if m.timestamp not in self:
-            self[m.timestamp] = {}
+            self[m.timestamp] = {
+                    '_id': str(m.timestamp),
+                    'type': 'sample',
+                    'roles': {}}
 
-        if m.role not in self[m.timestamp]:
-            self[m.timestamp][m.role] = {'stats': {}}
+        doc = self[m.timestamp]['roles']
 
-        self[m.timestamp][m.role][m.host] = m.metrics
+        if m.role not in doc:
+            doc[m.role] = {'stats': {}}
+
+        doc[m.role][m.host] = m.metrics
 
         for name, metric in m.metrics.items():
-            if name not in self[m.timestamp][m.role]['stats']:
-                self[m.timestamp][m.role]['stats'][name] = {
+            if name not in doc[m.role]['stats']:
+                doc[m.role]['stats'][name] = {
                         'count': 0,
                         'sum': 0,
                         'min': metric,
@@ -43,7 +78,7 @@ class MetricCollection(dict):
                         'avg': 0,
                         'var': 0}
 
-            stats = self[m.timestamp][m.role]['stats'][name]
+            stats = doc[m.role]['stats'][name]
             stats['count'] += 1
             stats['sum'] += metric
             stats['min'] = min(stats['min'], metric)
