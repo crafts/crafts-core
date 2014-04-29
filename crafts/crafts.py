@@ -16,7 +16,11 @@ Options:
 '''
 from docopt import docopt
 from couchdb.client import Server
+from glob import glob
 import json
+import os
+
+_here = os.path.dirname(os.path.realpath(__file__))
 
 if __name__ == '__main__':
     args = docopt(__doc__, version='Crafts 0.1')
@@ -25,6 +29,19 @@ if __name__ == '__main__':
 
     if args['init']:
         db = couch.create(args['-D'])
+        design = {
+                '_id': '_design/crafts',
+                'language': 'coffeescript',
+                'views': {}}
+
+        for script_file in glob(os.path.join(_here, 'views', '*.coffee')):
+            base = os.path.basename(script_file)
+            view_name = os.path.splitext(base)[0]
+            with open(script_file) as script:
+                design['views'][view_name] = {'map': script.read()}
+
+        db.save(design)
+
         with open(args['<config-file>']) as config_file:
             config = json.load(config_file)
             config['_id'] = 'config'
