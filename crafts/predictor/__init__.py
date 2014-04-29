@@ -13,10 +13,11 @@ def make_prediction(db, predictor_cls, role, metric, window_size, cycle_start,
     window.get(role, metric, start)
 
     predictor = predictor_cls()
-    return predictor.predict(window, cycle_start, interval, cycle_size)
+    prediction = predictor.predict(window, cycle_start, interval, cycle_size)
+    return prediction
 
 if __name__ == '__main__':
     from couchdb import Server
-    from crafts.predictor.lame import LamePredictor
+    from crafts.predictor.fft import FFTPredictor
 
-    print make_prediction(Server()['crafts'], LamePredictor, 'arts', 'requests', 7, datetime.utcnow(), 1, 10)
+    make_prediction(Server()['crafts'], FFTPredictor, 'arts', 'requests', 7, datetime.utcnow(), 1, 10)
