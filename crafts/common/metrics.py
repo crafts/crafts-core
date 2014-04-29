@@ -17,7 +17,7 @@ class CraftsCollection(dict):
         super(CraftsCollection, self).__init__()
 
     def __iter__(self):
-        keylist = self.keys().sort()
+        keylist = sorted(self.keys())
         for key in keylist:
             yield self[key]
 
