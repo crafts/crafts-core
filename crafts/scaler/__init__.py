@@ -1,7 +1,4 @@
 class ScalerDriver(object):
-   def __init__(self, config):
-      self.config = config
-
    def scale_up(self, role, count):
       raise NotImplementedError("scale_up needs to be implemented in subclass")
 
