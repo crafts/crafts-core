@@ -30,7 +30,7 @@ class CraftsCollection(dict):
 
     def get(self, view, **kwargs):
         result = self._db.view(view, **kwargs)
-        self.update(dict([(datetime.strptime(doc.id, '%Y-%m-%d %H:%M:%S.%f'),
+        self.update(dict([(datetime.strptime(doc.id, '%Y-%m-%dT%H:%M:%S.%f'),
                     doc.value) for doc in result]))
 
 
@@ -71,7 +71,7 @@ class MetricCollection(CraftsCollection):
     def add(self, m):
         if m.timestamp not in self:
             self[m.timestamp] = {
-                '_id': str(m.timestamp),
+                '_id': m.timestamp.isoformat(),
                 'type': 'sample',
                 'roles': {}}
 
