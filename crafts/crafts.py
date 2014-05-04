@@ -23,6 +23,7 @@ import os
 
 _here = os.path.dirname(os.path.realpath(__file__))
 
+
 def update_design(db):
     design = {
         '_id': '_design/crafts',
