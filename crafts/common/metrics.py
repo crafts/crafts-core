@@ -38,32 +38,32 @@ class PredictionCollection(CraftsCollection):
     def get(self, role, metric, start=datetime.min, end=datetime.max):
         return super(PredictionCollection, self)\
             .get('crafts/predict',
-                 startkey=[role, metric, str(start)],
-                 endkey=[role, metric, str(end)])
+                 startkey=[role, metric, start.isoformat()],
+                 endkey=[role, metric, end.isoformat()])
 
 
 class SummaryCollection(CraftsCollection):
     def get(self, role, start=datetime.min, end=datetime.max):
         return super(SummaryCollection, self)\
             .get('crafts/summary',
-                 startkey=[role, str(start)],
-                 endkey=[role, str(end)])
+                 startkey=[role, start.isoformat()],
+                 endkey=[role, end.isoformat()])
 
 
 class RoleCollection(CraftsCollection):
     def get(self, role, start=datetime.min, end=datetime.max):
         return super(RoleCollection, self)\
             .get('crafts/roles',
-                 startkey=[role, str(start)],
-                 endkey=[role, str(end)])
+                 startkey=[role, start.isoformat()],
+                 endkey=[role, end.isoformat()])
 
 
 class MetricCollection(CraftsCollection):
     def get(self, start=datetime.min, end=datetime.max):
         return super(MetricCollection, self)\
             .get('crafts/metrics',
-                 startkey=str(start),
-                 endkey=str(end))
+                 startkey=start.isoformat(),
+                 endkey=end.isoformat())
 
     def save(self):
         self._db.update(self.values())
