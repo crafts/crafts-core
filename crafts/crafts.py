@@ -16,7 +16,7 @@ Options:
         -D db           CouchDB database [default: crafts]
 '''
 from docopt import docopt
-from couchdb.client import Server
+from couchdb import Server
 from glob import glob
 import json
 import os
