@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
+from couchdb import Server
 import daemon
 import imp
 import os
-import requests
 import logging
 import logging.config
 import sys
@@ -13,22 +13,17 @@ import urlparse
 
 
 def usage():
-    print('Usage: craftsd <CouchDB-url> <crafts-config>')
+    print('Usage: craftsd <CouchDB-url> <db-name> <crafts-config>')
 
 
-def run(raw_url, config_doc):
-    couch_url = urlparse.urlparse(raw_url)
-    r = requests.get(couch_url.geturl()+'/'+config_doc)
-
-    r.raise_for_status()
-
-    config = r.json()
+def run(raw_url, db_name, config_doc):
+    db = Server(raw_url)[db_name]
+    config = db.get(config_doc)
 
     if 'logger' in config:
-        r = requests.get(couch_url.geturl() + '/' + config_doc +
-                         '/' + config['logger'])
+        log_stream = db.get_attachment(config_doc, config['logger'])
         logging_conf = tempfile.NamedTemporaryFile(delete=False)
-        logging_conf.write(r.text)
+        logging_conf.write(log_stream.read())
         logging_conf.close()
         logging.config.fileConfig(logging_conf.name)
         os.unlink(logging_conf.name)
@@ -38,7 +33,7 @@ def run(raw_url, config_doc):
         mod = __import__('.'.join(components[:-1]))
         for comp in components[1:]:
             mod = getattr(mod, comp)
-        return mod(config)
+        return mod()
 
     maldriver = get_component(config['maldriver'])
     predictor = get_component(config['predictor'])
@@ -49,7 +44,7 @@ def run(raw_url, config_doc):
         pass
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         usage()
     else:
-        run(sys.argv[1], sys.argv[2])
+        run(sys.argv[1], sys.argv[2], sys.argv[3])
