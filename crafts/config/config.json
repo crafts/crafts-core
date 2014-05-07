@@ -1,8 +1,7 @@
 {
    "_id"       : "config",
-   "maldriver" : "crafts.mal.arts.ARTSMALDriver",
+   "maldriver" : "crafts.mal.null.NullMAL",
    "predictor" : "crafts.predictor.lame.LamePredictor",
    "planner"   : "crafts.planner.simple.SimplePlanner",
-   "scaler"    : "crafts.scaler.arts.ARTSScalerDriver",
-   "logger"    : "logging.conf"
+   "scaler"    : "crafts.scaler.null.NullScaler"
 }
