@@ -1,4 +1,6 @@
-from crafts.common import metrics
+from crafts.common.metrics import AggregateCollection
+from crafts.common.metrics import Metric
+from crafts.common.metrics import PredictionCollection
 from datetime import datetime
 from datetime import timedelta
 
@@ -9,20 +11,27 @@ class Predictor(object):
             "predict needs to be implemented in subclass")
 
 
-def make_prediction(db, predictor_cls, role, metric, window_size, cycle_start,
-                    interval, cycle_size):
+def make_prediction(db, predictor_cls, role, metric, measure, window_size,
+                    cycle_start, interval, cycle_size):
     start = datetime.utcnow() - timedelta(days=window_size)
-    window = metrics.PredictionCollection(db)
-    window.get(role, metric, start)
+    window = AggregateCollection(db, role)
+    window.get(start)
 
     predictor = predictor_cls()
-    prediction = predictor.predict(window, cycle_start, interval, cycle_size)
-    return prediction
+    history = [(time, value[metric][measure])
+               for time, value in window.items()]
+    predictions = predictor.predict(history, cycle_start, interval, cycle_size)
+
+    pc = PredictionCollection(db, role)
+    for time, prediction in predictions:
+        pc.add(Metric(time, metrics={metric: {measure: prediction}}))
+
+    pc.save()
 
 
 if __name__ == '__main__':
     from couchdb import Server
     from crafts.predictor.fft import FFTPredictor
 
-    make_prediction(Server()['crafts'], FFTPredictor, 'arts', 'requests', 7,
-                    datetime.utcnow(), 1, 10)
+    make_prediction(Server()['crafts'], FFTPredictor, 'arts', 'requests',
+                    'sum', 7, datetime.utcnow(), 1, 10)
