@@ -3,8 +3,7 @@ import math
 
 
 class Planner(object):
-    def __init__(self, config):
-        self.config = config
+    pass
 
 
 def build_plan(predictions, throughput, scaler=NullScaler()):
