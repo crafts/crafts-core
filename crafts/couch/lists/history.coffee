@@ -3,9 +3,8 @@
 
       res = []
       while row = getRow()
-         time = Date.parse(row.key)
-         for key, value of row.value
-            res = res.concat([[time, value["requests"]["sum"]]])
+         time = Date.parse(row.key[1])
+         res = res.concat([[time, row.value["requests"]["sum"]]])
 
       return JSON.stringify(res)
    )

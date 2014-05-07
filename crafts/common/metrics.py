@@ -4,17 +4,17 @@ from datetime import datetime
 
 
 class Metric(dict):
-    def __init__(self, timestamp, role, host, metrics={}):
+    def __init__(self, timestamp, host="ALL", metrics={}):
         self.timestamp = timestamp
-        self.role = role
         self.host = host
         self.metrics = metrics
         super(Metric, self).__init__(metrics)
 
 
 class CraftsCollection(dict):
-    def __init__(self, db):
+    def __init__(self, db, role):
         self._db = db
+        self.role = role
 
         super(CraftsCollection, self).__init__()
 
@@ -28,83 +28,72 @@ class CraftsCollection(dict):
 
         return self[self.keys()[pos]]
 
-    def get(self, view, **kwargs):
-        result = self._db.view(view, **kwargs)
-        self.update(dict([(datetime.strptime(doc.id, '%Y-%m-%dT%H:%M:%S.%f'),
-                    doc.value) for doc in result]))
+    def get(self, view, start=datetime.min, end=datetime.max):
+        result = self._db.view(view,
+                               startkey=[self.role, start.isoformat()],
+                               endkey=[self.role, end.isoformat()])
+
+        self.update(dict([(datetime.strptime(
+            doc.key[1], '%Y-%m-%dT%H:%M:%S.%f'),
+            doc.value) for doc in result]))
+
+
+class AggregateCollection(CraftsCollection):
+    def get(self, start=datetime.min, end=datetime.max):
+        super(AggregateCollection, self).get('crafts/aggregates',
+                                             start, end)
 
 
 class PredictionCollection(CraftsCollection):
-    def get(self, role, metric, start=datetime.min, end=datetime.max):
-        return super(PredictionCollection, self)\
-            .get('crafts/predict',
-                 startkey=[role, metric, start.isoformat()],
-                 endkey=[role, metric, end.isoformat()])
+    def get(self, start=datetime.min, end=datetime.max):
+        super(AggregateCollection, self).get('crafts/predictions',
+                                             start, end)
 
+    def save(self):
+        docs = []
+        for time, predictions in self.items():
+            doc = {
+                '_id': '{}/{}/prediction'.format(self.role, time.isoformat()),
+                'role': self.role,
+                'timestamp': time.isoformat(),
+                'type': 'prediction',
+                'predictions': predictions
+            }
+            docs.append(doc)
 
-class SummaryCollection(CraftsCollection):
-    def get(self, role, start=datetime.min, end=datetime.max):
-        return super(SummaryCollection, self)\
-            .get('crafts/summary',
-                 startkey=[role, start.isoformat()],
-                 endkey=[role, end.isoformat()])
+        self._db.update(docs)
 
+    def add(self, p):
+        if p.timestamp not in self:
+            self[p.timestamp] = {}
 
-class RoleCollection(CraftsCollection):
-    def get(self, role, start=datetime.min, end=datetime.max):
-        return super(RoleCollection, self)\
-            .get('crafts/roles',
-                 startkey=[role, start.isoformat()],
-                 endkey=[role, end.isoformat()])
+        self[p.timestamp].update(p.metrics)
 
 
 class MetricCollection(CraftsCollection):
     def get(self, start=datetime.min, end=datetime.max):
-        return super(MetricCollection, self)\
-            .get('crafts/metrics',
-                 startkey=start.isoformat(),
-                 endkey=end.isoformat())
+        super(AggregateCollection, self).get('crafts/samples',
+                                             start, end)
 
-    def save(self):
-        self._db.update(self.values())
+    def save(self,):
+        docs = []
+        for time, hosts in self.items():
+            doc = {
+                '_id': '{}/{}/sample'.format(self.role, time.isoformat()),
+                'role': self.role,
+                'timestamp': time.isoformat(),
+                'type': 'sample',
+                'hosts': hosts
+            }
+            docs.append(doc)
+
+        self._db.update(docs)
 
     def add(self, m):
         if m.timestamp not in self:
-            self[m.timestamp] = {
-                '_id': m.timestamp.isoformat(),
-                'type': 'sample',
-                'roles': {}}
+            self[m.timestamp] = {}
 
-        doc = self[m.timestamp]['roles']
+        if m.host not in self[m.timestamp]:
+            self[m.timestamp][m.host] = {}
 
-        if m.role not in doc:
-            doc[m.role] = {'stats': {}}
-
-        doc[m.role][m.host] = m.metrics
-
-        for name, metric in m.metrics.items():
-            if name not in doc[m.role]['stats']:
-                doc[m.role]['stats'][name] = {
-                    'count': 0,
-                    'sum': 0,
-                    'min': metric,
-                    'max': 0,
-                    'avg': 0,
-                    'var': 0}
-
-            stats = doc[m.role]['stats'][name]
-            stats['count'] += 1
-            stats['sum'] += metric
-            stats['min'] = min(stats['min'], metric)
-            stats['max'] = max(stats['max'], metric)
-
-            newavg = stats['sum'] / stats['count']
-            if stats['count'] > 1:
-                stats['var'] = ((stats['count'] - 2) / (stats['count'] - 1)) *\
-                    stats['var'] +\
-                    (1 / stats['count']) *\
-                    (newavg - stats['avg']) ** 2
-            else:
-                stats['var'] = 0
-
-            stats['avg'] = newavg
+        self[m.timestamp][m.host].update(m.metrics)
