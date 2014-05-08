@@ -18,11 +18,6 @@ class CraftsCollection(dict):
 
         super(CraftsCollection, self).__init__()
 
-    def __iter__(self):
-        keylist = sorted(self.keys())
-        for key in keylist:
-            yield self[key]
-
     def find_nearest(self, dt):
         pos = bisect_left(sorted(self.keys()), dt)
 
