@@ -29,7 +29,7 @@ class CraftsCollection(dict):
                                endkey=[self.role, end.isoformat()])
 
         self.update(dict([(datetime.strptime(
-            doc.key[1], '%Y-%m-%dT%H:%M:%S.%f'),
+            doc.key[1], '%Y-%m-%dT%H:%M:%S'),
             doc.value) for doc in result]))
 
 
