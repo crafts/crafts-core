@@ -46,7 +46,7 @@ class AggregateCollection(CraftsCollection):
 
 class PredictionCollection(CraftsCollection):
     def get(self, start=datetime.min, end=datetime.max):
-        super(AggregateCollection, self).get('crafts/predictions',
+        super(PredictionCollection, self).get('crafts/predictions',
                                              start, end)
 
     def save(self):
