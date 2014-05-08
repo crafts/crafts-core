@@ -11,15 +11,16 @@ class Predictor(object):
             "predict needs to be implemented in subclass")
 
 
-def make_prediction(db, predictor_cls, role, metric, measure, window_size,
-                    cycle_start, interval, cycle_size):
-    start = datetime.utcnow() - timedelta(days=window_size)
+def make_prediction(db, predictor_cls, role, metric, measure,
+                    window_start, window_size,
+                    cycle_start, cycle_size, interval):
+    start = window_start - timedelta(days=window_size)
     window = AggregateCollection(db, role)
-    window.get(start)
+    window.get(start, window_start)
 
     predictor = predictor_cls()
     history = [(time, value[metric][measure])
-               for time, value in window.items()]
+               for time, value in sorted(window.items())]
     predictions = predictor.predict(history, cycle_start, interval, cycle_size)
 
     pc = PredictionCollection(db, role)
@@ -30,8 +31,11 @@ def make_prediction(db, predictor_cls, role, metric, measure, window_size,
 
 
 if __name__ == '__main__':
+    import sys
     from couchdb import Server
     from crafts.predictor.fft import FFTPredictor
 
+    start = datetime.strptime(sys.argv[1], '%Y-%m-%d')
+
     make_prediction(Server()['crafts'], FFTPredictor, 'arts', 'requests',
-                    'sum', 7, datetime.utcnow(), 1, 10)
+            'sum', start, 7, start, 7, 5)
