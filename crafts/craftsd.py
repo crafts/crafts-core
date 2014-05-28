@@ -33,12 +33,12 @@ def run(raw_url, db_name, config_doc):
         mod = __import__('.'.join(components[:-1]))
         for comp in components[1:]:
             mod = getattr(mod, comp)
-        return mod()
+        return mod
 
-    maldriver = get_component(config['maldriver'])
-    predictor = get_component(config['predictor'])
-    planner = get_component(config['planner'])
-    scaler = get_component(config['scaler'])
+    mal_cls = get_component(config['maldriver'])
+    predictor_cls = get_component(config['predictor'])
+    planner_cls = get_component(config['planner'])
+    scaler_cls = get_component(config['scaler'])
 
     with daemon.DaemonContext():
         pass
