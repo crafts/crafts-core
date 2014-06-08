@@ -4,7 +4,7 @@ from crafts.predictor import Predictor
 
 
 class FFTPredictor(Predictor):
-    PERCENT = 0.5
+    PERCENT = 0.96
 
     @staticmethod
     def set_params(*params):
@@ -16,14 +16,14 @@ class FFTPredictor(Predictor):
 
     @staticmethod
     def param_spec():
-        return [slice(0.0, 1.05, 0.05)]
+        return [slice(0.95, 1.00, 0.01)]
 
-    def predict(self, window, start_time, cycle_size):
+    def predict(self, window, start_time, cycle_size, interval):
         times, values = zip(*window)
         freq_dom = fft(values)
-        top_freqs = sorted(freq_dom)[:int(len(freq_dom) * FFTPredictor.PERCENT)]
-        top_freqs.append(freq_dom[0])
-        freq_dom = map(lambda x: x if x in top_freqs else 0, freq_dom)
+        threshold = abs(sorted(freq_dom, key=abs)[int((len(freq_dom) - 1) * FFTPredictor.PERCENT)])
+
+        freq_dom = map(lambda x: 0 if abs(x) < threshold else x, freq_dom)
 
         new_times = [(time - times[0]) + start_time for time in times]
 
