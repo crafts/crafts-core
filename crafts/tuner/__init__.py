@@ -5,9 +5,14 @@ from crafts.predictor import make_prediction
 from sklearn.metrics import mean_squared_error
 from scipy import optimize
 from math import sqrt
+from math import isnan
 
 def rmsd(actual, predicted):
-    return sqrt(mean_squared_error(actual, predicted))
+    result = sqrt(mean_squared_error(actual, predicted))
+    if isnan(result):
+        return 0.0
+    else:
+        return result
 
 class ErrorMatrix(object):
     def __init__(self):
@@ -20,10 +25,13 @@ class ErrorMatrix(object):
         assert len(actual) == len(predicted),\
             "actual and predicted lists are not of equal length: {}, {}".format(len(actual), len(predicted))
 
-        self.actual.append(actual)
-        self.predicted.append(predicted)
+        self.actual.extend(actual)
+        self.predicted.extend(predicted)
 
     def calculate(self):
+        self.lt_list = ([], [])
+        self.gte_list = ([], [])
+
         for i in xrange(len(self.actual)):
             if self.predicted[i] < self.actual[i]:
                 self.lt_list[0].append(self.actual[i])
@@ -75,6 +83,7 @@ def validate(db, role, metric, measure, window_start, window_size, cycle_start, 
             window_start += timedelta(seconds=interval)
             cycle_start += timedelta(seconds=interval)
     
+    err.calculate()
     return err
 
 def optimization_func(params, db, role, metric, measure, window_start, window_size,
@@ -82,7 +91,6 @@ def optimization_func(params, db, role, metric, measure, window_start, window_si
     predictor_cls.set_params(params)
     error_matrix = validate(db, role, metric, measure, window_start, window_size,
             cycle_start, cycle_size, interval, num_folds, predictor_cls)
-    error_matrix.calculate()
     return error_matrix.total_rmsd
 
 def tune(db, role, metric, measure, window_start, window_size, cycle_start, cycle_size, interval, 
