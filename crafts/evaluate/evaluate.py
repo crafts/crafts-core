@@ -5,7 +5,7 @@ import sys
 from couchdb import Server
 from crafts.predictor.fft import FFTPredictor
 from crafts.predictor.markov import MarkovPredictor
-from crafts.predictor.regression import LinearRegressionPredictor
+from crafts.predictor.regression import ThielSenPredictor
 from crafts.predictor.smoothing import ExponentialSmoothingPredictor
 from crafts.tuner import tune
 from crafts.tuner import validate
@@ -62,7 +62,7 @@ if __name__ == '__main__':
         predictor_cls = ExponentialSmoothingPredictor
     elif predictor == "Regression":
         start = datetime(2007, 10, 14)
-        args.extend([start, 21, 7, 300, 1])
-        predictor_cls = LinearRegressionPredictor
+        args.extend([start, 21, start, 604800, 300, 1])
+        predictor_cls = ThielSenPredictor
 
     evaluate(start, predictor_cls, args, do_tune)
