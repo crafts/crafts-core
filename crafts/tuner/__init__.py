@@ -40,10 +40,14 @@ class ErrorMatrix(object):
                 self.gte_list[0].append(self.actual[i])
                 self.gte_list[1].append(self.predicted[i])
 
+        if len(self.actual) > 0:
+            self.lt_percent = len(self.lt_list[0]) / float(len(self.actual))
+            self.gte_percent = len(self.gte_list[0]) / float(len(self.actual))
+        else:
+            self.lt_percent = 0.0
+            self.gte_percent = 0.0
         self.lt_rmsd = rmsd(self.lt_list[0], self.lt_list[1])
-        self.lt_percent = len(self.lt_list[0]) / float(len(self.actual))
         self.gte_rmsd = rmsd(self.gte_list[0], self.gte_list[1])
-        self.gte_percent = len(self.gte_list[0]) / float(len(self.actual))
         self.total_rmsd = rmsd(self.actual, self.predicted)
 
     def __str__(self):
@@ -55,18 +59,39 @@ class ErrorMatrix(object):
 
         return out_str
 
-def evaluate(actual_collection, predicted_collection, metric, measure):
-    actual = [value[metric][measure] for time, value in
-            sorted(actual_collection.items())]
-    predicted = [value[metric][measure] for time, value in
-            sorted(predicted_collection.items())]
+def evaluate(actual_collection, predicted_collection, metric, measure, anomaly=None):
+    if anomaly is None:
+        actual = [value[metric][measure] for time, value in
+                sorted(actual_collection.items())]
+        predicted = [value[metric][measure] for time, value in
+                sorted(predicted_collection.items())]
+        return ((actual, predicted), ([], []))
 
-    return (actual, predicted)
+    anomaly_values = ([], [])
+    regular_values = ([], [])
+    for time, raw_value in sorted(actual_collection.items()):
+        value = raw_value[metric][measure]
+
+        if time > anomaly[0] and time < anomaly[1]:
+            anomaly_values[0].append(value)
+        else:
+            regular_values[0].append(value)
+    for time, raw_value in sorted(predicted_collection.items()):
+        value = raw_value[metric][measure]
+
+        if time > anomaly[0] and time < anomaly[1]:
+            anomaly_values[1].append(value)
+        else:
+            regular_values[1].append(value)
+
+    return (regular_values, anomaly_values)
 
 def validate(db, role, metric, measure, window_start, window_size, cycle_start, cycle_size,
-             interval, num_folds, predictor_cls=None, save=False):
+             interval, num_folds, predictor_cls=None, anomaly=None, save=False):
 
-    err = ErrorMatrix()
+    regular_err = ErrorMatrix()
+    anomaly_err = ErrorMatrix()
+
     for _ in xrange(num_folds):
         actual_collection = AggregateCollection(db, role)
         actual_collection.get(cycle_start, cycle_start + timedelta(seconds=cycle_size))
@@ -74,8 +99,13 @@ def validate(db, role, metric, measure, window_start, window_size, cycle_start, 
                 measure, window_start, window_size, cycle_start, cycle_size, interval)
         if save:
             predicted_collection.save()
-        err.add(*evaluate(actual_collection, predicted_collection, metric,
-            measure))
+
+        regular_values, anomaly_values = evaluate(actual_collection,
+            predicted_collection, metric, measure, anomaly=anomaly)
+
+        regular_err.add(*regular_values)
+        anomaly_err.add(*anomaly_values)
+
         if cycle_size > 0:
             window_start += timedelta(seconds=cycle_size)
             cycle_start += timedelta(seconds=cycle_size)
@@ -83,14 +113,15 @@ def validate(db, role, metric, measure, window_start, window_size, cycle_start, 
             window_start += timedelta(seconds=interval)
             cycle_start += timedelta(seconds=interval)
     
-    err.calculate()
-    return err
+    regular_err.calculate()
+    anomaly_err.calculate()
+    return (regular_err, anomaly_err)
 
 def optimization_func(params, db, role, metric, measure, window_start, window_size,
         cycle_start, cycle_size, interval, num_folds, predictor_cls):
     predictor_cls.set_params(params)
     error_matrix = validate(db, role, metric, measure, window_start, window_size,
-            cycle_start, cycle_size, interval, num_folds, predictor_cls)
+            cycle_start, cycle_size, interval, num_folds, predictor_cls)[0]
     return error_matrix.total_rmsd
 
 def tune(db, role, metric, measure, window_start, window_size, cycle_start, cycle_size, interval, 
